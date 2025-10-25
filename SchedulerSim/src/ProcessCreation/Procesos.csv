@@ -1,0 +1,6 @@
+Nombre,Longitud,CpuBound,IoTrigger,IoService,Memoria,Prioridad
+P1,8,true,3,2,64,1
+P2,5,false,2,3,32,2
+P3,12,true,6,2,128,1
+P4,7,false,4,3,48,3
+P5,10,true,5,2,96,2

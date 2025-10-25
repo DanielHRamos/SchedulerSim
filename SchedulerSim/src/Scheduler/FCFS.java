@@ -8,27 +8,45 @@ import EDD.Queue;
 import OS.CPU;
 import OS.ClockListener;
 import ProcessCreation.PCB;
+import java.util.function.Consumer;
 
 /**
  *
  * @author Daniel
  */
-public class Scheduler implements ClockListener {
+public class FCFS implements ClockListener {
 
     private Queue<PCB> readyQueue;
     private CPU cpu;
 
-    public Scheduler(Queue<PCB> readyQueue, CPU cpu) {
+   
+    private Consumer<String> logger;
+
+    public FCFS(Queue<PCB> readyQueue, CPU cpu) {
         this.readyQueue = readyQueue;
         this.cpu = cpu;
+    }
+
+    
+    public void setLogger(Consumer<String> logger) {
+        this.logger = logger;
+    }
+
+    
+    private void log(String msg) {
+        if (logger != null) {
+            logger.accept(msg);
+        } else {
+            System.out.println(msg); 
+        }
     }
 
     @Override
     public void onTick(long cycle) {
         if (cpu.isIdle() && !readyQueue.isEmpty()) {
             PCB next = readyQueue.pop();
-            cpu.setRunningProcess(next);
-            System.out.println("Ciclo " + cycle + " → Scheduler asigna " + next.getName() + " al CPU");
+            cpu.setRunningProcess(next, cycle); // 🔹 usar versión con ciclo
+            log("Ciclo " + cycle + " → FCFS asigna " + next.getName() + " al CPU");
         }
     }
 }

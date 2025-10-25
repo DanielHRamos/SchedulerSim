@@ -8,56 +8,73 @@ import EDD.Queue;
 import OS.CPU;
 import OS.ClockListener;
 import ProcessCreation.PCB;
+import java.util.function.Consumer;
 
 /**
  *
  * @author Daniel
  */
-public class RoundRobinScheduler implements ClockListener {
+public class RoundRobin implements ClockListener {
+
     private Queue<PCB> readyQueue;
     private CPU cpu;
     private int quantum;
     private int quantumCounter;
 
-    public RoundRobinScheduler(Queue<PCB> readyQueue, CPU cpu, int quantum) {
+    
+    private Consumer<String> logger;
+
+    public RoundRobin(Queue<PCB> readyQueue, CPU cpu, int quantum) {
         this.readyQueue = readyQueue;
         this.cpu = cpu;
         this.quantum = quantum;
         this.quantumCounter = 0;
     }
 
+    
+    public void setLogger(Consumer<String> logger) {
+        this.logger = logger;
+    }
+
+    private void log(String msg) {
+        if (logger != null) {
+            logger.accept(msg);
+        } else {
+            System.out.println(msg); 
+        }
+    }
+
     @Override
     public void onTick(long cycle) {
-        // Si no hay proceso en CPU, asignar uno
         if (cpu.isIdle() && !readyQueue.isEmpty()) {
             PCB next = readyQueue.pop();
-            cpu.setRunningProcess(next);
+            cpu.setRunningProcess(next, cycle);
             quantumCounter = 0;
-            System.out.println("Ciclo " + cycle + " → RR asigna " + next.getName() + " al CPU");
+            log("Ciclo " + cycle + " → asigna " + next.getName() + " al CPU");
             return;
         }
 
-        // Si hay proceso en CPU, verificar quantum
         if (!cpu.isIdle()) {
             quantumCounter++;
-
             PCB current = cpu.getRunningProcess();
 
-            // Si terminó
             if (current.getExecuted() >= current.getLength()) {
                 current.setStatus(PCB.Status.TERMINATED);
-                System.out.println("Ciclo " + cycle + " → Proceso terminado: " + current.getName());
+                log("Ciclo " + cycle + " → Proceso terminado: " + current.getName());
                 cpu.setRunningProcess(null);
                 quantumCounter = 0;
-            }
-            // Si agotó el quantum
-            else if (quantumCounter >= quantum) {
+            } else if (quantumCounter >= quantum) {
                 current.setStatus(PCB.Status.READY);
                 readyQueue.insert(current);
-                System.out.println("Ciclo " + cycle + " → Quantum agotado, proceso " + current.getName() + " vuelve a READY");
+                log("Ciclo " + cycle + " → Quantum agotado, proceso " + current.getName() + " vuelve a READY");
                 cpu.setRunningProcess(null);
                 quantumCounter = 0;
             }
         }
     }
+
+    public void resetQuantumCounter() {
+        this.quantumCounter = 0;
+    }
+
 }

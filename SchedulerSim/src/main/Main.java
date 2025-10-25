@@ -5,41 +5,50 @@
 package main;
 
 import EDD.Queue;
-import OS.IOManager;
+import GUI.MetricsManager;
+import GUI.SimulationGUI;
 import OS.CPU;
 import OS.Clock;
+import OS.IOManager;
+import ProcessCreation.MemoryManager;
 import ProcessCreation.PCB;
-import Scheduler.RoundRobinScheduler;
-import Scheduler.Scheduler;
 
 /**
  *
  * @author Daniel
  */
 public class Main {
+
     public static void main(String[] args) {
-        Queue<PCB> readyQueue = new Queue<>();
-        Queue<PCB> blockedQueue = new Queue<>();
-        CPU cpu = new CPU();
-        Clock clock = new Clock(1000); // 1 segundo por ciclo
-        RoundRobinScheduler scheduler = new RoundRobinScheduler(readyQueue, cpu, 3);
-        IOManager ioManager = new IOManager(cpu, blockedQueue, readyQueue);
+        
+        Queue<PCB> newQueue = new Queue<>();        
+        Queue<PCB> readyQueue = new Queue<>();     
+        Queue<PCB> blockedQueue = new Queue<>();    
+        Queue<PCB> terminatedQueue = new Queue<>(); 
 
+        
+        MemoryManager memoryManager = new MemoryManager(512); 
+        MetricsManager metricsManager = new MetricsManager();
+
+        
+        CPU cpu = new CPU(terminatedQueue, readyQueue, blockedQueue, memoryManager, metricsManager);
+
+        
+        Clock clock = new Clock(1000, cpu, metricsManager);
+
+        
+        SimulationGUI gui = new SimulationGUI(clock, cpu, readyQueue, blockedQueue, terminatedQueue, memoryManager, newQueue);
+        gui.setVisible(true);
+
+        
+        clock.addListener(gui);
+
+        
+        IOManager ioManager = new IOManager(cpu, blockedQueue, readyQueue, memoryManager);
         clock.addListener(cpu);
-        clock.addListener(scheduler);
         clock.addListener(ioManager);
-
+        
         Thread clockThread = new Thread(clock);
         clockThread.start();
-
-        // Proceso CPU bound
-        PCB p1 = new PCB("CPU1", 8, true, 0, 0, 64);
-        // Proceso I/O bound: se bloquea en ciclo 3, espera 2 ciclos
-        PCB p2 = new PCB("IO1", 10, false, 3, 2, 64);
-
-        readyQueue.insert(p1);
-        readyQueue.insert(p2);
-
-        System.out.println("Procesos cargados en READY");
     }
 }

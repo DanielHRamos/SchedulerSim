@@ -4,6 +4,8 @@
  */
 package ProcessCreation;
 
+import java.util.function.Consumer;
+
 /**
  *
  * @author Daniel
@@ -11,7 +13,13 @@ package ProcessCreation;
 public class PCB {
 
     public enum Status {
-        NEW, READY, RUNNING, BLOCKED, TERMINATED, SUSPENDED_READY, SUSPENDED_BLOCKED
+        NEW,
+        READY,
+        RUNNING,
+        BLOCKED,
+        TERMINATED,
+        SUSPENDED_READY,
+        SUSPENDED_BLOCKED
     }
 
     private static int nextId = 1;
@@ -27,6 +35,20 @@ public class PCB {
     private int executed = 0;
     private long arrivalTime;
     private int memorySize;
+    private int ioTrigger;
+    private int ioService;
+    private long ioStartCycle;
+    private int arrivalCycle;
+    private long startCycle = -1;
+    private long finishCycle;
+    private boolean ioTriggered = false;
+    private int priority;
+
+    private static Consumer<String> logger;
+
+    public static void setLogger(Consumer<String> logConsumer) {
+        logger = logConsumer;
+    }
 
     public PCB(String name, int length, boolean cpuBound, int ioTriggerCycles, int ioServiceCycles, int memorySize) {
         this.pid = nextId++;
@@ -40,11 +62,51 @@ public class PCB {
         this.memorySize = memorySize;
     }
 
+    public void changeStatus(Status newStatus, long cycle, String detail) {
+        Status oldStatus = this.status;
+        this.status = newStatus;
+
+        if (logger != null) {
+            String msg = "Proceso " + name + " pasó de " + oldStatus + " a " + newStatus
+                    + (detail != null ? " (" + detail + ")" : "")
+                    + " en ciclo " + cycle;
+            logger.accept(msg);
+        }
+    }
+
     public static int getNextId() {
         return nextId;
     }
 
-    private boolean ioTriggered = false;
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public void setStartCycle(long cycle) {
+        if (this.startCycle == -1) {
+            this.startCycle = cycle;
+        }
+    }
+
+    public void setFinishCycle(long cycle) {
+        this.finishCycle = cycle;
+    }
+
+    public long getTurnaround() {
+        return finishCycle - arrivalCycle;
+    }
+
+    public long getResponseTime() {
+        return startCycle - arrivalCycle;
+    }
+
+    public long getWaitingTime() {
+        return getTurnaround() - executed;
+    }
 
     public boolean isIoTriggered() {
         return ioTriggered;
@@ -148,5 +210,31 @@ public class PCB {
 
     public int getPid() {
         return pid;
+    }
+
+    public boolean needsIO() {
+        if (cpuBound) {
+            return false;
+        }
+        return executed == ioTrigger; 
+    }
+
+    public void startIO(long cycle) {
+        this.ioStartCycle = cycle;
+    }
+
+    public boolean ioCompleted(long cycle) {
+        if (ioStartCycle == -1) {
+            return false;
+        }
+        return (cycle - ioStartCycle) >= ioService;
+    }
+
+    public int getArrivalCycle() {
+        return arrivalCycle;
+    }
+
+    public void setArrivalCycle(int arrivalCycle) {
+        this.arrivalCycle = arrivalCycle;
     }
 }

@@ -5,6 +5,8 @@
 package OS;
 
 import EDD.Queue;
+import EDD.SimpleNode;
+import ProcessCreation.MemoryManager;
 import ProcessCreation.PCB;
 
 /**
@@ -16,40 +18,60 @@ public class IOManager implements ClockListener {
     private CPU cpu;
     private Queue<PCB> blockedQueue;
     private Queue<PCB> readyQueue;
+    private MemoryManager memoryManager;
 
-    public IOManager(CPU cpu, Queue<PCB> blockedQueue, Queue<PCB> readyQueue) {
+    public IOManager(CPU cpu, Queue<PCB> blockedQueue, Queue<PCB> readyQueue, MemoryManager memoryManager) {
         this.cpu = cpu;
         this.blockedQueue = blockedQueue;
         this.readyQueue = readyQueue;
+        this.memoryManager = memoryManager;
     }
 
     @Override
     public void onTick(long cycle) {
-        PCB current = cpu.getRunningProcess();
+        PCB running = cpu.getRunningProcess();
 
-        if (current != null && !current.isCpuBound()) {
-            // Si el proceso alcanzó el ciclo de disparo de I/O
-            if (current.getExecuted() == current.getIoTriggerCycles() && !current.isIoTriggered()) {
-                current.setIoTriggered(true); // marcar que ya se bloqueó
-                current.setStatus(PCB.Status.BLOCKED);
-                blockedQueue.insert(current);
-                cpu.setRunningProcess(null);
+       
+        if (running != null && running.needsIO()) {
+            cpu.setRunningProcess(null);
+            running.startIO(cycle);
 
-                System.out.println("Ciclo " + cycle + " → Proceso " + current.getName() + " se bloquea por I/O");
+            if (memoryManager.allocate(running)) {
+                running.setStatus(PCB.Status.BLOCKED);
+                blockedQueue.insert(running);
+                
+            } else {
+                running.setStatus(PCB.Status.SUSPENDED_BLOCKED);
+                memoryManager.getSuspendedBlocked().insert(running);
+                
+            }
 
-                new Thread(() -> {
-                    try {
-                        Thread.sleep(current.getIoServiceCycles() * 1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+            
+            memoryManager.tryReactivate(readyQueue, blockedQueue);
+        }
+
+        
+        if (!blockedQueue.isEmpty()) {
+            SimpleNode<PCB> node = blockedQueue.getpFirst();
+            while (node != null) {
+                PCB pcb = node.getData();
+                if (pcb.ioCompleted(cycle)) {
+                    blockedQueue.delete(pcb);
+
+                    if (memoryManager.allocate(pcb)) {
+                        pcb.setStatus(PCB.Status.READY);
+                        readyQueue.insert(pcb);
+                        
+                    } else {
+                        pcb.setStatus(PCB.Status.SUSPENDED_READY);
+                        memoryManager.getSuspendedReady().insert(pcb);
+                        
                     }
 
-                    current.setStatus(PCB.Status.READY);
-                    readyQueue.insert(current);
-                    blockedQueue.pop();
-
-                    System.out.println("→ Proceso " + current.getName() + " regresa a READY tras I/O");
-                }).start();
+                    
+                    memoryManager.tryReactivate(readyQueue, blockedQueue);
+                }
+                node = node.getpNext();
             }
         }
     }

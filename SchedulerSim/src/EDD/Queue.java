@@ -42,4 +42,7 @@ public class Queue<T> {
     public SimpleNode<T> getpFirst() {
         return list.getpFirst();
     }
+    public void delete(T data) {
+        list.delete(data);
+    }
 }
