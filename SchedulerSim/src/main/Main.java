@@ -27,7 +27,7 @@ public class Main {
         Queue<PCB> terminatedQueue = new Queue<>(); 
 
         
-        MemoryManager memoryManager = new MemoryManager(512); 
+        MemoryManager memoryManager = new MemoryManager(10000); 
         MetricsManager metricsManager = new MetricsManager();
 
         

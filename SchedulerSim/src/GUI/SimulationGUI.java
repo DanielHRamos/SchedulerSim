@@ -66,6 +66,7 @@ public class SimulationGUI extends javax.swing.JFrame implements ClockListener {
             MemoryManager memoryManager, Queue<PCB> newQueue) {
         initComponents();
         initLogArea();
+        setLocationRelativeTo(null);
         PCB.setLogger(this::logEvent);
         this.clock = clock;
         this.cpu = cpu;

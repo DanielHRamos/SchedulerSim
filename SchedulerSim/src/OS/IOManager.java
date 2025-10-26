@@ -32,7 +32,7 @@ public class IOManager implements ClockListener {
         PCB running = cpu.getRunningProcess();
 
        
-        if (running != null && running.needsIO()) {
+        if (running != null && running.needsIO(cycle)) {
             cpu.setRunningProcess(null);
             running.startIO(cycle);
 

@@ -212,11 +212,8 @@ public class PCB {
         return pid;
     }
 
-    public boolean needsIO() {
-        if (cpuBound) {
-            return false;
-        }
-        return executed == ioTrigger; 
+    public boolean needsIO(long cycle) {
+        return ioTrigger > 0 && executed == ioTrigger;
     }
 
     public void startIO(long cycle) {
@@ -237,4 +234,5 @@ public class PCB {
     public void setArrivalCycle(int arrivalCycle) {
         this.arrivalCycle = arrivalCycle;
     }
+
 }
